@@ -1,0 +1,6 @@
+{
+	"name": "moduleLoader",
+	"description": "A Strategy Loader pattern to load modules in a hMVC way",
+	"dependencies": {},
+	"main": "moduleLoader.js"
+}
