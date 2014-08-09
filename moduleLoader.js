@@ -26,19 +26,23 @@ global.include = function include(strategy) {
 };
 
 global.include.resolve = function resolve(strategy){
-	var tmp = strategy.split('!'),
-		kind = tmp[0].toLowerCase(),
-		moduleName = pathToUnix(tmp[1]),
-		modulePath
-	;
+	try{
+		var tmp = strategy.split('!'),
+			kind = tmp[0].toLowerCase(),
+			moduleName = pathToUnix(tmp[1]),
+			modulePath
+		;
 
-	if (kind === 'module') {
-		modulePath = parseModuleName(moduleName);
-		return modulePath;
-	} else if (kind === 'service') {
-		return 'services/' + parseName(moduleName, '/');
-	} else {
-		return normalizeInsider(moduleName, kind);
+		if (kind === 'module') {
+			modulePath = parseModuleName(moduleName);
+			return modulePath;
+		} else if (kind === 'service') {
+			return 'services/' + parseName(moduleName, '/');
+		} else {
+			return normalizeInsider(moduleName, kind);
+		}
+	}catch(e){
+		throw new Error('modulesloader: ERROR Resolving: \'' + strategy + '\' | ' + e.constructor.name + ': ' + e.message);
 	}
 };
 
@@ -91,18 +95,14 @@ function getModuleNameOfCaller() {
 
 function getCallerOfInclude() {
 	var stack = getStack();
-
 	var collect = false;
 	var tmp = stack.filter(function(item) {
-		if (collect)
-			return item;
-
-		if (item.fun.name === 'include' || item.fun.name === 'resolve') {
-			collect = true;
+		if(!!item.receiver &&  item.receiver !== global){
 			return item;
 		}
 		return undefined;
 	});
+
 	tmp.shift();
 	tmp.shift();
 
