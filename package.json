@@ -1,6 +1,25 @@
 {
-	"name": "moduleLoader",
-	"description": "A Strategy Loader pattern to load modules in a hMVC way",
-	"dependencies": {},
-	"main": "moduleLoader.js"
+  "name": "modulesloader",
+  "description": "A Strategy Loader pattern to load modules in a hMVC way",
+  "dependencies": {},
+  "main": "moduleLoader.js",
+  "version": "0.4.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://danyg@github.com/danyg/moduleLoader.nodejs.git"
+  },
+  "keywords": [
+    "moduleLoader",
+    "stategyloader",
+    "loader",
+    "include"
+  ],
+  "author": "Daniel Goberitz <dalgo86@gmail.com> (https://github.com/danyg/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/danyg/moduleLoader.nodejs/issues"
+  }
 }
