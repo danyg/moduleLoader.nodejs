@@ -22,7 +22,7 @@ var path = require('path'),
 ;
 
 global.include = function include(strategy) {
-	require(BASE_PATH + '/' + global.include.resolve(strategy));
+	return require(BASE_PATH + '/' + global.include.resolve(strategy));
 };
 
 global.include.resolve = function resolve(strategy){
