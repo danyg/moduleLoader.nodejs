@@ -3,7 +3,7 @@
   "description": "A Strategy Loader pattern to load modules in a hMVC way",
   "dependencies": {},
   "main": "moduleLoader.js",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,5 +21,8 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/danyg/moduleLoader.nodejs/issues"
+  },
+  "scripts": {
+	  "test": "jasmine-node tests/specs/ --color"
   }
 }

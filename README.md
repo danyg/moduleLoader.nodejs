@@ -33,3 +33,38 @@ include('view!personalDetails') ==> modules/Employees/views/personalDetails.js
 include('template!personalDetails') ==> modules/Employees/templates/personalDetails.js
 include('widget!phones') ==> modules/Employees/widgets/phones.js
 ```
+
+## Customization
+
+You can change the basePath, the default base path is the directory from your 
+main entrypoint. But you can change this using `include.setBasePath()`.
+
+Also you can create and modify the internal strategys (model,helper,view,template,widget). 
+You are able to change the normal loader ('require') for a customized callback, 
+this is usable for example to get templates (in plain/text) or json files or 
+any another kind of types (a querys list in xml, css, etc...) in order to do this:
+
+### modify template kind to read html
+```
+	include.setKind('template', function(filename){
+		return fs.readFileSync(filename, {encoding: 'utf8'});
+	}, '.html');
+
+	typeof include('template!aTemplate') === 'string' // true
+
+```
+
+### create a json kind
+```
+	include.setKind(
+		'json', 
+		function(filename){
+			return JSON.parse(fs.readFileSync(filename, {encoding: 'utf8'}));
+		}, 
+		'.json', 
+		'jsons/'
+	);
+	
+	typeof include('json!package') === 'object' // true
+```
+

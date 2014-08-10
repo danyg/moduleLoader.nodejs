@@ -11,18 +11,66 @@
 
 /** globals: require, global */
 var path = require('path'),
+	assert = require('assert'),
 	BASE_PATH = path.dirname(require.main.filename),
-	InsiderKinds = {
-		'model': 'models/',
-		'view': 'views/',
-		'template': 'templates/',
-		'helper': 'helpers/',
-		'widget': 'widgets/'
-	}
+	loadStrategies = {
+		'model': {
+			dirname: 'models/',
+			loader: 'require',
+			extension: ''
+		},
+		'view': {
+			dirname: 'views/',
+			loader: 'require',
+			extension: ''
+		},
+		'template': {
+			dirname: 'templates/',
+			loader: 'require',
+			extension: ''
+		},
+		'helper': {
+			dirname: 'helpers/',
+			loader: 'require',
+			extension: ''
+		},
+		'widget': {
+			dirname: 'widgets/',
+			loader: 'require',
+			extension: ''
+		}
+	},
+	cache = {}
 ;
 
 global.include = function include(strategy) {
-	return require(BASE_PATH + '/' + global.include.resolve(strategy));
+	return getLoaderByKind(getKindFromStrategy(strategy))(BASE_PATH + '/' + global.include.resolve(strategy));
+};
+
+global.include.cache = cache;
+global.include.setBasePath = function(basePath){
+	BASE_PATH = path.normalize(basePath);
+};
+
+global.include.getBasePath = function(){
+	return BASE_PATH;
+};
+
+global.include.setKind = function(kind, loader, extension, dirname){
+	kind = kind.toLowerCase();
+	if(!loadStrategies[kind]){
+		assert.notEqual(extension, undefined, 'extension must be setted');
+		assert.notEqual(dirname, undefined, 'dirname must be setted');
+		loadStrategies[kind] = {};
+	}
+
+	loadStrategies[kind].loader = loader;
+	if(extension !== undefined){
+		loadStrategies[kind].extension = extension;
+	}
+	if(dirname !== undefined){
+		loadStrategies[kind].dirname = dirname;
+	}
 };
 
 global.include.resolve = function resolve(strategy){
@@ -39,15 +87,51 @@ global.include.resolve = function resolve(strategy){
 		} else if (kind === 'service') {
 			return 'services/' + parseName(moduleName, '/');
 		} else {
-			return normalizeInsider(moduleName, kind);
+			return normalizeInsider(moduleName, kind) + getExtensionByKind(kind);
 		}
 	}catch(e){
+		console.log(e.stack);
 		throw new Error('modulesloader: ERROR Resolving: \'' + strategy + '\' | ' + e.constructor.name + ': ' + e.message);
 	}
 };
 
+function getKindFromStrategy(strategy){
+	var tmp = strategy.split('!')
+	return tmp[0].toLowerCase();
+}
+
 function pathToUnix(aPath) {
 	return aPath.replace(/\\/g, '/');
+}
+
+function getDirNameByKind(kind){
+	return loadStrategies[kind].dirname;
+}
+
+function getExtensionByKind(kind){
+	return loadStrategies[kind].extension;
+}
+
+function getLoaderByKind(kind){
+	if(kind === 'module' || kind === 'service'){
+		return require;
+	}
+	try{
+		var loader = loadStrategies[kind].loader;
+		if(typeof loader === 'string'){
+			loader = !!module[loader] ? module[loader] : GLOBAL[loader];
+			if(loader === include){
+				throw new TypeError('modulesLoader couldn\'t use include as a strategy loader for ' + kind);
+			}
+		}
+
+		if(typeof loader !== 'function'){
+			throw new TypeError('modulesLoader couldn\'t use the loader registered for ' + kind);
+		}
+	}catch(e){
+		throw new TypeError('modulesLoader couldn\'t use the loader registered for ' + kind);
+	}
+	return loader;
 }
 
 function normalizeInsider(name, kind) {
@@ -57,7 +141,7 @@ function normalizeInsider(name, kind) {
 
 	if (root && root[1]) {
 		if (name.indexOf(root[1]) === -1) {
-			return root[1] + InsiderKinds[kind] + name;
+			return root[1] + getDirNameByKind(kind) + name;
 		} else {
 			return name;
 		}
@@ -90,7 +174,13 @@ function parseModuleName(name) {
 }
 
 function getModuleNameOfCaller() {
-	return pathToUnix(path.relative(BASE_PATH, getCallerOfInclude().filename));
+	var receiver = getCallerOfInclude();
+	
+	try{
+		return pathToUnix(path.relative(BASE_PATH, receiver.filename));
+	}catch(e){
+		return BASE_PATH;
+	}
 }
 
 function getCallerOfInclude() {
