@@ -3,7 +3,7 @@
   "description": "A Strategy Loader pattern to load modules in a hMVC way",
   "dependencies": {},
   "main": "moduleLoader.js",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
