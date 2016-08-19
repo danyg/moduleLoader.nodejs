@@ -6,7 +6,7 @@
  *
  * @license ModulesLoader 0.4.0 Copyright (c) 2013-2014 Daniel Goberitz
  * @author Daniel Goberitz <dalgo86@gmail.com>
- * 
+ *
  */
 
 /** globals: require, global */
@@ -73,7 +73,7 @@ global.include.setKind = function(kind, loader, extension, dirname){
 	}
 };
 
-global.include.resolve = function resolve(strategy){
+global.include.resolve = function resolve(strategy, jumps){
 	try{
 		var tmp = strategy.split('!'),
 			kind = tmp[0].toLowerCase(),
@@ -87,10 +87,9 @@ global.include.resolve = function resolve(strategy){
 		} else if (kind === 'service') {
 			return 'services/' + parseName(moduleName, '/');
 		} else {
-			return normalizeInsider(moduleName, kind) + getExtensionByKind(kind);
+			return normalizeInsider(moduleName, kind, jumps) + getExtensionByKind(kind);
 		}
 	}catch(e){
-		console.log(e.stack);
 		throw new Error('modulesloader: ERROR Resolving: \'' + strategy + '\' | ' + e.constructor.name + ': ' + e.message);
 	}
 };
@@ -134,10 +133,10 @@ function getLoaderByKind(kind){
 	return loader;
 }
 
-function normalizeInsider(name, kind) {
-	var currentPath = getModuleNameOfCaller(),
-			root = currentPath.match(/(modules\/[^\/]*\/)/)
-			;
+function normalizeInsider(name, kind, jumps) {
+	var currentPath = getModuleNameOfCaller(jumps),
+		root = currentPath.match(/(modules\/[^\/]*\/)/)
+	;
 
 	if (root && root[1]) {
 		if (name.indexOf(root[1]) === -1) {
@@ -173,30 +172,35 @@ function parseModuleName(name) {
 	}
 }
 
-function getModuleNameOfCaller() {
-	var receiver = getCallerOfInclude();
-	
+function getModuleNameOfCaller(jumps) {
+	var callerPath = getCallerOfInclude(jumps);
+
 	try{
-		return pathToUnix(path.relative(BASE_PATH, receiver.filename));
+		return pathToUnix(path.relative(BASE_PATH, callerPath));
 	}catch(e){
 		return BASE_PATH;
 	}
 }
 
-function getCallerOfInclude() {
+function getCallerOfInclude(jumps) {
 	var stack = getStack();
 	var collect = false;
 	var tmp = stack.filter(function(item) {
-		if(!!item.receiver &&  item.receiver !== global){
+		if(item.getFileName() !== __filename) {
 			return item;
 		}
 		return undefined;
 	});
 
-	tmp.shift();
-	tmp.shift();
+	ix = 0 + (jumps || 0);
 
-	return tmp[0].receiver || {filename: BASE_PATH};
+	var ret;
+	try {
+		ret = tmp[ix].getFileName();
+	} catch (e) {
+		ret = BASE_PATH;
+	}
+	return ret;
 }
 
 function getStack() {
