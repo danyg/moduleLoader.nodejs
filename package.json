@@ -5,7 +5,7 @@
   "main": "moduleLoader.js",
   "version": "0.4.3",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jasmine-node tests/specs/ --color"
   },
   "repository": {
     "type": "git",
@@ -22,7 +22,7 @@
   "bugs": {
     "url": "https://github.com/danyg/moduleLoader.nodejs/issues"
   },
-  "scripts": {
-	  "test": "jasmine-node tests/specs/ --color"
+  "devDependencies": {
+    "jasmine-node": "^1.14.5"
   }
 }
