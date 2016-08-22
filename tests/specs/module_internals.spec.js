@@ -1,9 +1,12 @@
-/*
- *
- *  @overview
- *  @author Daniel Goberitz <dalgo86@gmail.com>
- *
- */
+/**
+* @Overview
+*
+* @Author: Daniel Goberitz
+* @Date:               2016-08-20 00:02:48
+* @Last Modified time: 2016-08-22 19:35:52
+*/
+'use strict';
+
 var TEST_BASE_PATH;
 var path = require('path');
 describe('Module Internal Specs', function(){
@@ -23,7 +26,7 @@ describe('Module Internal Specs', function(){
 		expect(include.getBasePath()).toEqual(TEST_BASE_PATH);
 		var expectedURI = path.relative(TEST_BASE_PATH, __filename).replace(/\\/g, '/').trim();
 
-		expect(toTry).toThrow(`modulesloader: ERROR Resolving: 'model!Amodel' | URIError: model!Amodel unreachable from ${expectedURI}`);
+		expect(toTry).toThrowError(Error, `modulesloader: ERROR Resolving: 'model!Amodel' | URIError: model!Amodel unreachable from ${expectedURI}`);
 	});
 
 	it('Should get the module', function(){

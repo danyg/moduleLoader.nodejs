@@ -1,0 +1,12 @@
+{
+  "spec_dir": "tests/specs",
+  "spec_files": [
+    "**/*spec.js"
+  ],
+  "helpers": [
+    "helpers/**/*.js"
+  ],
+  "stopSpecOnExpectationFailure": false,
+  "random": false,
+  "showColors": true
+}

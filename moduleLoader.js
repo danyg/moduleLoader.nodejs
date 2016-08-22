@@ -10,8 +10,11 @@
  */
 
 /** globals: require, global */
+'use strict';
+
 var path = require('path'),
 	assert = require('assert'),
+	AbstractStrategy = require('./lib/AbstractStrategy'),
 	BASE_PATH = path.dirname(require.main.filename),
 	loadStrategies = {
 		'model': {
@@ -46,6 +49,7 @@ var path = require('path'),
 global.include = function include(strategy) {
 	return getLoaderByKind(getKindFromStrategy(strategy))(BASE_PATH + '/' + global.include.resolve(strategy));
 };
+global.include.AbstractStrategy = AbstractStrategy;
 
 global.include.cache = cache;
 global.include.setBasePath = function(basePath){
@@ -81,6 +85,10 @@ global.include.resolve = function resolve(strategy, jumps){
 			modulePath
 		;
 
+		if(HANDLERS.hasOwnProperty(kind)) {
+			return HANDLERS[kind].resolve(kind, moduleName);
+		}
+
 		if (kind === 'module') {
 			modulePath = parseModuleName(moduleName);
 			return modulePath;
@@ -94,8 +102,49 @@ global.include.resolve = function resolve(strategy, jumps){
 	}
 };
 
+var HANDLERS = {};
+var STRATEGIES = {};
+global.include.registerStrategy = function registerStrategy(Strategy) {
+	if(!STRATEGIES.hasOwnProperty(Strategy.name)) {
+		var strategy = new Strategy();
+		if(strategy instanceof AbstractStrategy) {
+			var handlers = strategy.getHandlers(),
+				kind
+			;
+			for(var i = 0; i < handlers.length; i++) {
+				kind = handlers[i].toLowerCase();
+				if(HANDLERS.hasOwnProperty(kind)) {
+					throw new Error(`The Handler '${kind}' is already in use`);
+				} else {
+					HANDLERS[kind] = strategy;
+				}
+			}
+
+			STRATEGIES[Strategy.name] = strategy;
+		} else {
+			throw new TypeError(strategy.constructor.name + ' is not in the hierarchy of include.AbstractStrategy');
+		}
+	}
+};
+
+global.include.unregisterStrategy = function registerStrategy(Strategy) {
+	if(STRATEGIES.hasOwnProperty(Strategy.name)) {
+		var strategy = STRATEGIES[Strategy.name];
+		var handlers = strategy.getHandlers(),
+			kind
+		;
+		for(var i = 0; i < handlers.length; i++) {
+			kind = handlers[i].toLowerCase();
+			if(HANDLERS.hasOwnProperty(kind)) {
+				delete HANDLERS[kind];
+			}
+		}
+		delete STRATEGIES[Strategy.name];
+	}
+};
+
 function getKindFromStrategy(strategy){
-	var tmp = strategy.split('!')
+	var tmp = strategy.split('!');
 	return tmp[0].toLowerCase();
 }
 
@@ -111,14 +160,18 @@ function getExtensionByKind(kind){
 	return loadStrategies[kind].extension;
 }
 
-function getLoaderByKind(kind){
+function getLoaderByKind(kind) {
+	if(HANDLERS.hasOwnProperty(kind)) {
+		return HANDLERS[kind].load.bind(HANDLERS[kind]);
+	}
+
 	if(kind === 'module' || kind === 'service'){
 		return require;
 	}
 	try{
 		var loader = loadStrategies[kind].loader;
 		if(typeof loader === 'string'){
-			loader = !!module[loader] ? module[loader] : GLOBAL[loader];
+			loader = !!module[loader] ? module[loader] : global[loader];
 			if(loader === include){
 				throw new TypeError('modulesLoader couldn\'t use include as a strategy loader for ' + kind);
 			}
@@ -192,7 +245,7 @@ function getCallerOfInclude(jumps) {
 		return undefined;
 	});
 
-	ix = 0 + (jumps || 0);
+	var ix = 0 + (jumps || 0);
 
 	var ret;
 	try {
@@ -226,3 +279,23 @@ function getStack() {
 
 	return stack;
 }
+
+
+
+
+
+
+
+
+
+
+
+const ServiceStrategy = require('./lib/ServiceStrategy');
+include.registerStrategy(ServiceStrategy);
+
+const ModuleStrategy = require('./lib/ModuleStrategy');
+include.registerStrategy(ModuleStrategy);
+
+
+
+

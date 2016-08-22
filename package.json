@@ -3,9 +3,10 @@
   "description": "A Strategy Loader pattern to load modules in a hMVC way",
   "dependencies": {},
   "main": "moduleLoader.js",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "scripts": {
-    "test": "jasmine-node tests/specs/ --color"
+    "test": "node tests/runJasmine.js",
+    "testDebug": "node-debug --debug-brk tests/runJasmine.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,6 @@
     "url": "https://github.com/danyg/moduleLoader.nodejs/issues"
   },
   "devDependencies": {
-    "jasmine-node": "^1.14.5"
+    "jasmine": "^2.4.1"
   }
 }
