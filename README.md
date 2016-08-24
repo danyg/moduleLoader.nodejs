@@ -7,9 +7,8 @@ A Strategy Loader pattern to load modules in a hMVC way
 ```
 require('moduleLoader');
 ```
-After this require, the include function will be register in the global scope, 
+After this require, the include function will be register in the global scope,
 the idea is to require this module in yout main entry point
-
 
 ## Examples
 
@@ -36,35 +35,51 @@ include('widget!phones') ==> modules/Employees/widgets/phones.js
 
 ## Customization
 
-You can change the basePath, the default base path is the directory from your 
+You can change the basePath, the default base path is the directory from your
 main entrypoint. But you can change this using `include.setBasePath()`.
 
-Also you can create and modify the internal strategys (model,helper,view,template,widget). 
-You are able to change the normal loader ('require') for a customized callback, 
-this is usable for example to get templates (in plain/text) or json files or 
+Also you can create and modify the internal strategys (model,helper,view,template,widget).
+You are able to change the normal loader ('require') for a customized callback,
+this is usable for example to get templates (in plain/text) or json files or
 any another kind of types (a querys list in xml, css, etc...) in order to do this:
 
-### modify template kind to read html
-```
-	include.setKind('template', function(filename){
-		return fs.readFileSync(filename, {encoding: 'utf8'});
-	}, '.html');
+### Create your own strategy
+```javascript
+const {AbstractStrategy} = require('modulesLoader');
 
-	typeof include('template!aTemplate') === 'string' // true
+class Plugin extends AbstractStrategy {
+	constructor(handlerOps) {
+		super(handlerOps);
+		this._baseDir = 'plugins';
+	}
+
+	resolve(kind, moduleName) {
+		return this._baseDir + '/' + moduleName + 'Plugin.js';
+	}
+
+	getHandlers() {
+		return ['plugin'];
+	}
+
+	load(path) {
+		return super.load(path);
+	}
+};
+
+include.registerStrategy(Plugin);
+```
+### Modify the current ones
+```javascript
+const {ModuleStrategy} = require('modulesLoader');
+const moduleStrategy = include.getStrategy(ModuleStrategy);
+
+moduleStrategy.addKind('part', 'parts/');
+
+// now you can get include('part!partName') inside a module!
+
+moduleStrategy.removeKind('template');
+moduleStrategy.addKind('template', 'templates/', '.tmpl', function(absolutePath) {
+	return yourFavouriteTemplateProcessor(absolutePath);
+});
 
 ```
-
-### create a json kind
-```
-	include.setKind(
-		'json', 
-		function(filename){
-			return JSON.parse(fs.readFileSync(filename, {encoding: 'utf8'}));
-		}, 
-		'.json', 
-		'jsons/'
-	);
-	
-	typeof include('json!package') === 'object' // true
-```
-
