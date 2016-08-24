@@ -1,10 +1,10 @@
 /*
- *     (c) 2013-2014 Daniel Goberitz.
+ *     (c) 2013-2016 Daniel Goberitz.
  *     Modules loader may be freely distributed under the MIT license.
  *     For all details and documentation:
  *     https://www.github.com/danyg/modulesLoader
  *
- * @license ModulesLoader 0.4.0 Copyright (c) 2013-2014 Daniel Goberitz
+ * @license ModulesLoader 0.5.0 Copyright (c) 2013-2014 Daniel Goberitz
  * @author Daniel Goberitz <dalgo86@gmail.com>
  *
  */
@@ -12,46 +12,53 @@
 /** globals: require, global */
 'use strict';
 
+var HANDLERS = {};
+var STRATEGIES = {};
+
+const AbstractStrategy = require('./lib/AbstractStrategy');
+module.exports.AbstractStrategy = AbstractStrategy;
+
+const ServiceStrategy = require('./lib/ServiceStrategy');
+module.exports.ServiceStrategy = ServiceStrategy;
+
+const ModuleStrategy = require('./lib/ModuleStrategy');
+module.exports.ModuleStrategy = ModuleStrategy;
+
 var path = require('path'),
-	assert = require('assert'),
-	AbstractStrategy = require('./lib/AbstractStrategy'),
-	BASE_PATH = path.dirname(require.main.filename),
-	loadStrategies = {
-		'model': {
-			dirname: 'models/',
-			loader: 'require',
-			extension: ''
-		},
-		'view': {
-			dirname: 'views/',
-			loader: 'require',
-			extension: ''
-		},
-		'template': {
-			dirname: 'templates/',
-			loader: 'require',
-			extension: ''
-		},
-		'helper': {
-			dirname: 'helpers/',
-			loader: 'require',
-			extension: ''
-		},
-		'widget': {
-			dirname: 'widgets/',
-			loader: 'require',
-			extension: ''
-		}
-	},
-	cache = {}
+	BASE_PATH = path.dirname(require.main.filename)
 ;
 
-global.include = function include(strategy) {
-	return getLoaderByKind(getKindFromStrategy(strategy))(BASE_PATH + '/' + global.include.resolve(strategy));
-};
-global.include.AbstractStrategy = AbstractStrategy;
+function pathToUnix(aPath) {
+	return aPath.replace(/\\/g, '/');
+}
 
-global.include.cache = cache;
+function splitStrategy(strategy) {
+	var tmp = strategy.split('!'),
+		kind = tmp[0].toLowerCase(),
+		moduleName = pathToUnix(tmp[1])
+	;
+	return {
+		kind: kind,
+		moduleName: moduleName
+	};
+}
+
+global.include = function include(strategy) {
+	var {kind, moduleName} = splitStrategy(strategy);
+	if(HANDLERS.hasOwnProperty(kind)) {
+		var strategyHandler = HANDLERS[kind];
+		return strategyHandler.load(
+			BASE_PATH + '/' + global.include.resolve(strategy),
+			kind,
+			moduleName
+		);
+	} else {
+		throw new TypeError(`Unrecognized strategy '${strategy}' kind '${kind}' is not a valid kind`);
+		// LEGACY CODE
+		// return getLoaderByKind(getKindFromStrategy(strategy))(BASE_PATH + '/' + global.include.resolve(strategy));
+	}
+};
+
 global.include.setBasePath = function(basePath){
 	BASE_PATH = path.normalize(basePath);
 };
@@ -60,71 +67,59 @@ global.include.getBasePath = function(){
 	return BASE_PATH;
 };
 
-global.include.setKind = function(kind, loader, extension, dirname){
-	kind = kind.toLowerCase();
-	if(!loadStrategies[kind]){
-		assert.notEqual(extension, undefined, 'extension must be setted');
-		assert.notEqual(dirname, undefined, 'dirname must be setted');
-		loadStrategies[kind] = {};
-	}
-
-	loadStrategies[kind].loader = loader;
-	if(extension !== undefined){
-		loadStrategies[kind].extension = extension;
-	}
-	if(dirname !== undefined){
-		loadStrategies[kind].dirname = dirname;
-	}
-};
-
-global.include.resolve = function resolve(strategy, jumps){
+global.include.resolve = function resolve(strategy){
 	try{
-		var tmp = strategy.split('!'),
-			kind = tmp[0].toLowerCase(),
-			moduleName = pathToUnix(tmp[1]),
-			modulePath
-		;
+		var {kind, moduleName} = splitStrategy(strategy);
 
 		if(HANDLERS.hasOwnProperty(kind)) {
 			return HANDLERS[kind].resolve(kind, moduleName);
-		}
-
-		if (kind === 'module') {
-			modulePath = parseModuleName(moduleName);
-			return modulePath;
-		} else if (kind === 'service') {
-			return 'services/' + parseName(moduleName, '/');
-		} else {
-			return normalizeInsider(moduleName, kind, jumps) + getExtensionByKind(kind);
 		}
 	}catch(e){
 		throw new Error('modulesloader: ERROR Resolving: \'' + strategy + '\' | ' + e.constructor.name + ': ' + e.message);
 	}
 };
 
-var HANDLERS = {};
-var STRATEGIES = {};
+var handlerOps = {
+	removeHandler: function(kind){
+		if(HANDLERS.hasOwnProperty(kind)) {
+			delete HANDLERS[kind];
+		}
+	},
+
+	addHandler: function(kind, strategy) {
+		if(!HANDLERS.hasOwnProperty(kind)) {
+			HANDLERS[kind] = strategy;
+		} else {
+			throw new Error(`The Handler '${kind}' is already in use`);
+		}
+	}
+};
+
 global.include.registerStrategy = function registerStrategy(Strategy) {
 	if(!STRATEGIES.hasOwnProperty(Strategy.name)) {
-		var strategy = new Strategy();
+		var strategy = new Strategy(handlerOps);
 		if(strategy instanceof AbstractStrategy) {
 			var handlers = strategy.getHandlers(),
 				kind
 			;
 			for(var i = 0; i < handlers.length; i++) {
 				kind = handlers[i].toLowerCase();
-				if(HANDLERS.hasOwnProperty(kind)) {
-					throw new Error(`The Handler '${kind}' is already in use`);
-				} else {
-					HANDLERS[kind] = strategy;
-				}
+				handlerOps.addHandler(kind, strategy);
 			}
 
 			STRATEGIES[Strategy.name] = strategy;
+			strategy.registered();
 		} else {
 			throw new TypeError(strategy.constructor.name + ' is not in the hierarchy of include.AbstractStrategy');
 		}
 	}
+};
+
+global.include.getStrategy = function(Strategy) {
+	if(STRATEGIES.hasOwnProperty(Strategy.name)) {
+		return STRATEGIES[Strategy.name];
+	}
+	return null;
 };
 
 global.include.unregisterStrategy = function registerStrategy(Strategy) {
@@ -135,167 +130,11 @@ global.include.unregisterStrategy = function registerStrategy(Strategy) {
 		;
 		for(var i = 0; i < handlers.length; i++) {
 			kind = handlers[i].toLowerCase();
-			if(HANDLERS.hasOwnProperty(kind)) {
-				delete HANDLERS[kind];
-			}
+			handlerOps.removeHandler(kind);
 		}
 		delete STRATEGIES[Strategy.name];
 	}
 };
 
-function getKindFromStrategy(strategy){
-	var tmp = strategy.split('!');
-	return tmp[0].toLowerCase();
-}
-
-function pathToUnix(aPath) {
-	return aPath.replace(/\\/g, '/');
-}
-
-function getDirNameByKind(kind){
-	return loadStrategies[kind].dirname;
-}
-
-function getExtensionByKind(kind){
-	return loadStrategies[kind].extension;
-}
-
-function getLoaderByKind(kind) {
-	if(HANDLERS.hasOwnProperty(kind)) {
-		return HANDLERS[kind].load.bind(HANDLERS[kind]);
-	}
-
-	if(kind === 'module' || kind === 'service'){
-		return require;
-	}
-	try{
-		var loader = loadStrategies[kind].loader;
-		if(typeof loader === 'string'){
-			loader = !!module[loader] ? module[loader] : global[loader];
-			if(loader === include){
-				throw new TypeError('modulesLoader couldn\'t use include as a strategy loader for ' + kind);
-			}
-		}
-
-		if(typeof loader !== 'function'){
-			throw new TypeError('modulesLoader couldn\'t use the loader registered for ' + kind);
-		}
-	}catch(e){
-		throw new TypeError('modulesLoader couldn\'t use the loader registered for ' + kind);
-	}
-	return loader;
-}
-
-function normalizeInsider(name, kind, jumps) {
-	var currentPath = getModuleNameOfCaller(jumps),
-		root = currentPath.match(/(modules\/[^\/]*\/)/)
-	;
-
-	if (root && root[1]) {
-		if (name.indexOf(root[1]) === -1) {
-			return root[1] + getDirNameByKind(kind) + name;
-		} else {
-			return name;
-		}
-	} else {
-		throw URIError(kind + '!' + name + ' unreachable from ' + currentPath);
-	}
-}
-
-function parseName(name, glue) {
-	var tmp = name.split('/');
-	if (tmp.length === 1) {
-		name = name + glue + name;
-	} else if (tmp.length === 2) {
-		name = tmp[0] + glue + tmp[1];
-	} else if (tmp.length > 2) {
-		throw new URIError('Ilegal module name \'' + name + '\'');
-	}
-
-	return name;
-}
-
-function parseModuleName(name) {
-	if (name.indexOf('modules/') === -1) {
-		// module!projects -> modules/projects/controllers/projects.js
-		// module!projects/projectDetails -> modules/projects/controlers/projectDetails.js
-		return 'modules/' + parseName(name, '/controllers/');
-	} else {
-		return name;
-	}
-}
-
-function getModuleNameOfCaller(jumps) {
-	var callerPath = getCallerOfInclude(jumps);
-
-	try{
-		return pathToUnix(path.relative(BASE_PATH, callerPath));
-	}catch(e){
-		return BASE_PATH;
-	}
-}
-
-function getCallerOfInclude(jumps) {
-	var stack = getStack();
-	var collect = false;
-	var tmp = stack.filter(function(item) {
-		if(item.getFileName() !== __filename) {
-			return item;
-		}
-		return undefined;
-	});
-
-	var ix = 0 + (jumps || 0);
-
-	var ret;
-	try {
-		ret = tmp[ix].getFileName();
-	} catch (e) {
-		ret = BASE_PATH;
-	}
-	return ret;
-}
-
-function getStack() {
-	// Save original Error.prepareStackTrace
-	var origPrepareStackTrace = Error.prepareStackTrace;
-
-	// Override with function that just returns `stack`
-	Error.prepareStackTrace = function(_, stack) {
-		return stack;
-	};
-
-	// Create a new `Error`, which automatically gets `stack`
-	var err = new Error();
-
-	// Evaluate `err.stack`, which calls our new `Error.prepareStackTrace`
-	var stack = err.stack;
-
-	// Restore original `Error.prepareStackTrace`
-	Error.prepareStackTrace = origPrepareStackTrace;
-
-	// Remove superfluous function call on stack
-	stack.shift(); // getStack --> Error
-
-	return stack;
-}
-
-
-
-
-
-
-
-
-
-
-
-const ServiceStrategy = require('./lib/ServiceStrategy');
-include.registerStrategy(ServiceStrategy);
-
-const ModuleStrategy = require('./lib/ModuleStrategy');
-include.registerStrategy(ModuleStrategy);
-
-
-
-
+global.include.registerStrategy(ServiceStrategy);
+global.include.registerStrategy(ModuleStrategy);

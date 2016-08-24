@@ -5,5 +5,8 @@
  * 
  */
 
+module.exports = {
 
-module.exports = '<html><body>a template</body></html>';
+	template: include('template!aTemplate')
+
+};

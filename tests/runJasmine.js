@@ -3,7 +3,7 @@
 *
 * @Author: Daniel Goberitz
 * @Date:               2016-08-21 19:57:08
-* @Last Modified time: 2016-08-22 19:26:11
+* @Last Modified time: 2016-08-24 02:04:36
 */
 
 'use strict';
@@ -11,7 +11,11 @@
 const Jasmine = require('jasmine');
 const util = require('util');
 const jasmine = new Jasmine();
-const ConsoleReporter = require('jasmine/lib/reporters/console_reporter')
+const ConsoleReporter = require('jasmine/lib/reporters/console_reporter');
+
+function log() {
+	process.stdout.write('\x1B[1;36m!> ' + util.format.apply(util, arguments) + '\x1B[0m\n');
+}
 
 var ansi = {
 	passed: '\x1B[32m',
@@ -24,8 +28,11 @@ var ansi = {
 	log: '\x1B[1;32m',
 	info: '\x1B[1;36m',
 	warn: '\x1B[1;33m',
+};
+
+function c(color, str) {
+	return (ansi[color] + str + ansi.none);
 }
-function c(color, str) {return (ansi[color] + str + ansi.none);}
 
 function MyConsoleReporter(o) {
 	this._letDefaultPrint = false;
@@ -34,19 +41,20 @@ function MyConsoleReporter(o) {
 		if(!!me._letDefaultPrint) {
 			process.stdout.write(util.format.apply(this, arguments));
 		}
-	}
+	};
 	ConsoleReporter.apply(this, arguments);
 
 	this.suiteStarted = function(result) {
 		process.stdout.write(this.tabs()  + ansi.u + result.description + ansi.none + '\n');
 		this.tbs++;
-	}
+	};
+
 	var suD = this.specDone;
 	this.suiteDone = function() {
 		this.tbs--;
 		process.stdout.write('\n');
 		suD.apply(this, arguments);
-	}
+	};
 
 	this.buildConsoleQueueFor('log');
 	this.buildConsoleQueueFor('info');
@@ -70,18 +78,17 @@ function MyConsoleReporter(o) {
 	    this.printQueue();
 
 		spD.apply(this, arguments);
-	}
+	};
 
 	this.tbs = 0;
 	this.tabs = (extra) => {
 		extra = !!extra ? extra : 0;
-		var str = ''
+		var str = '';
 		for(var i = 0; i < (this.tbs + extra); i++) {
 			str+='  ';
 		}
 		return str;
-	}
-
+	};
 
 	var jD = this.jasmineDone;
 	this.jasmineDone = function() {
@@ -98,7 +105,7 @@ MyConsoleReporter.prototype.buildConsoleQueueFor = function(method) {
 	var me = this;
 	global.console[method] = function() {
 		me._queue.push([method, arguments]);
-	}
+	};
 };
 
 MyConsoleReporter.prototype.printQueue = function() {
@@ -111,14 +118,13 @@ MyConsoleReporter.prototype.printQueue = function() {
 		);
 	});
 	this._queue.splice(0);
-}
-
+};
 
 util.inherits(MyConsoleReporter, ConsoleReporter);
 
 var customReporter = new MyConsoleReporter({
 	showColors: true,
-	jasmineCorePath: this.jasmineCorePath
+	jasmineCorePath: jasmine.jasmineCorePath
 });
 
 jasmine.loadConfigFile('tests/config/jasmine.json');

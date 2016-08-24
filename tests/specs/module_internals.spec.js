@@ -3,7 +3,7 @@
 *
 * @Author: Daniel Goberitz
 * @Date:               2016-08-20 00:02:48
-* @Last Modified time: 2016-08-22 19:35:52
+* @Last Modified time: 2016-08-24 01:16:14
 */
 'use strict';
 
@@ -29,7 +29,7 @@ describe('Module Internal Specs', function(){
 		expect(toTry).toThrowError(Error, `modulesloader: ERROR Resolving: 'model!Amodel' | URIError: model!Amodel unreachable from ${expectedURI}`);
 	});
 
-	it('Should get the module', function(){
+	it('Should get the module', function() {
 		var fakeTestModule = include('module!TheMassiveModule');
 
 		expect(fakeTestModule.model._FAKE_TEST_ID_).toEqual('TheMassiveModule/aModel');
