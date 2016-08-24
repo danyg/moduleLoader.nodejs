@@ -3,7 +3,7 @@
   "description": "A Strategy Loader pattern to load modules in a hMVC way",
   "dependencies": {},
   "main": "moduleLoader.js",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "scripts": {
     "test": "node tests/runJasmine.js",
     "testDebug": "node-debug --debug-brk tests/runJasmine.js"
